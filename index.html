@@ -2,96 +2,107 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Steam Game Map</title>
 <meta name="description" content="Search games you already like on a map of every Steam game and get recommendations weighted by reviews and obscurity.">
+<meta property="og:title" content="Steam Game Map">
+<meta property="og:description" content="56,688 Steam games placed by what they're like. Search the ones you love, find what sits between them.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 <canvas id="gl"></canvas>
 <canvas id="overlay"></canvas>
+<div class="vignette" aria-hidden="true"></div>
 
-<header class="brand">
-  <span class="idx">01</span><span class="rule"></span><span>STEAM GAME MAP</span>
-  <span class="count" id="count"></span>
-</header>
+<div class="lockup">
+  <div class="mark" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div>
+    <div class="name">Steam Game Map</div>
+    <div class="sub"><span id="count">56,688</span> games, placed by what they're like</div>
+  </div>
+</div>
 
 <aside id="panel">
-  <div class="panel-scroll">
-    <section class="search">
-      <label class="eyebrow" for="q">Games you already like</label>
+  <div class="grab" aria-hidden="true"></div>
+  <div class="panel-scroll" id="scroll">
+    <section class="block search">
+      <div class="block-head"><h2>Games you love</h2><span class="hint-key">press <kbd>/</kbd></span></div>
       <div class="searchbox">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-        <input id="q" type="text" autocomplete="off" spellcheck="false" placeholder="Search a game… (add several)">
-        <kbd>/</kbd>
+        <input id="q" type="text" autocomplete="off" spellcheck="false" placeholder="Search any Steam game">
       </div>
-      <ul id="suggest" role="listbox"></ul>
+      <ul id="suggest" role="listbox" aria-label="Matching games"></ul>
       <div id="chips"></div>
-      <p class="hint" id="hint">Add one game or several. Tap a chip to flip it to <b class="avoid-word">avoid</b>, so results move away from it.</p>
+      <p class="note" id="hint">Add several to find games that sit between them. Tap a game to <b class="avoid-word">avoid</b> it instead.</p>
     </section>
 
-    <section class="controls" id="controls">
-      <div class="seg" role="radiogroup" aria-label="Combine games">
-        <button data-mode="all" class="on" role="radio" aria-checked="true">Like all<small>close to every pick</small></button>
-        <button data-mode="any" role="radio" aria-checked="false">Like any<small>near at least one</small></button>
+    <section class="block controls" id="controls">
+      <div class="seg" role="radiogroup" aria-label="How to combine your games">
+        <button data-mode="all" class="on" role="radio" aria-checked="true"><b>Like all</b><small>close to every game</small></button>
+        <button data-mode="any" role="radio" aria-checked="false"><b>Like any</b><small>close to at least one</small></button>
       </div>
 
-      <div class="slider">
-        <div class="row"><span>Review quality</span><output id="o-quality"></output></div>
-        <input type="range" id="quality" min="0" max="100" value="45">
-        <div class="ends"><span>ignore</span><span>only well-rated</span></div>
-      </div>
-      <div class="slider">
-        <div class="row"><span>Obscurity</span><output id="o-obscure"></output></div>
-        <input type="range" id="obscure" min="-100" max="100" value="0">
-        <div class="ends"><span>blockbusters</span><span>hidden gems</span></div>
+      <div class="tune">
+        <div class="slider">
+          <div class="row"><label for="quality">Review quality</label><output id="o-quality"></output></div>
+          <input type="range" id="quality" min="0" max="100" value="45">
+          <div class="ends"><span>any rating</span><span>only acclaimed</span></div>
+        </div>
+        <div class="slider">
+          <div class="row"><label for="obscure">Popularity</label><output id="o-obscure"></output></div>
+          <input type="range" id="obscure" min="-100" max="100" value="0" class="bipolar">
+          <div class="ends"><span>blockbusters</span><span>hidden gems</span></div>
+        </div>
       </div>
 
       <details class="filters">
-        <summary>Filters</summary>
+        <summary><span>Filters</span><span class="fsum" id="fsum">50+ reviews</span></summary>
         <div class="frow">
           <label>Min reviews<select id="minrev">
             <option value="10">10+</option><option value="50" selected>50+</option><option value="200">200+</option>
             <option value="1000">1k+</option><option value="10000">10k+</option></select></label>
-          <label>Max price<select id="maxprice">
-            <option value="99999" selected>Any</option><option value="0">Free</option><option value="500">Under $5</option>
+          <label>Price<select id="maxprice">
+            <option value="99999" selected>Any price</option><option value="0">Free only</option><option value="500">Under $5</option>
             <option value="1000">Under $10</option><option value="2000">Under $20</option><option value="4000">Under $40</option></select></label>
         </div>
         <div class="frow">
-          <label>From year<input type="number" id="y0" min="1997" max="2026" value="1997"></label>
-          <label>To year<input type="number" id="y1" min="1997" max="2026" value="2026"></label>
+          <label>Released from<input type="number" id="y0" min="1997" max="2026" value="1997"></label>
+          <label>Released to<input type="number" id="y1" min="1997" max="2026" value="2026"></label>
         </div>
       </details>
     </section>
 
-    <section class="results">
-      <div class="eyebrow results-head"><span id="rtitle">Recommendations</span><span id="rcount"></span></div>
+    <section class="block results">
+      <div class="block-head" id="rhead"><h2 id="rtitle">Recommendations</h2><span id="rcount"></span></div>
       <ol id="list"></ol>
       <div id="empty" class="empty">
-        <p class="big">Every dot is a Steam game.</p>
-        <p>Games sit near games that share their tags and premise. Search a few you love, then tune the weights to slide between famous neighbours and hidden gems.</p>
-        <div class="try">Try
-          <button data-try="413150">Stardew Valley</button>
-          <button data-try="367520,646570">Hollow Knight + Slay the Spire</button>
-          <button data-try="753640,294100">Outer Wilds + RimWorld</button>
+        <p class="lead">Every point of light is a Steam game. Games that play alike sit together.</p>
+        <h3>Start from a game</h3>
+        <div class="starts" id="starts"></div>
+        <h3>Or try a mix</h3>
+        <div class="mixes">
+          <button data-try="367520,646570"><span>Hollow Knight</span><i>+</i><span>Slay the Spire</span></button>
+          <button data-try="753640,294100"><span>Outer Wilds</span><i>+</i><span>RimWorld</span></button>
+          <button data-try="413150,105600"><span>Stardew Valley</span><i>+</i><span>Terraria</span></button>
         </div>
       </div>
     </section>
+    <footer class="src" id="src"></footer>
   </div>
-  <footer class="src" id="src"></footer>
 </aside>
 
-<div id="legend"></div>
-<div id="tip" role="tooltip"></div>
-<div id="zoom">
+<div id="legend" class="glass"></div>
+<div id="zoom" class="glass">
   <button id="zin" aria-label="Zoom in">+</button>
   <button id="zout" aria-label="Zoom out">−</button>
-  <button id="zfit" aria-label="Fit map">⤢</button>
+  <button id="zfit" aria-label="Show the whole map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
 </div>
-<div id="loading"><div class="pulse"></div><span id="loadmsg">Loading every Steam game…</span></div>
+<div id="tip" role="tooltip"></div>
+<div id="loading"><div class="orbit"><i></i></div><span id="loadmsg">Charting every Steam game…</span></div>
 
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
