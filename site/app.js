@@ -453,7 +453,7 @@ function resize() {
   W = innerWidth; H = innerHeight;
   for (const c of [glc, ovc]) { c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); }
   const prevFit = fitS;
-  fitS = fitScale() || 1;
+  fitS = Math.max(1, fitScale() || 1); // a hidden/zero-width first layout gives <= 0
   // keep the whole map framed until the user has panned/zoomed (also covers a 0-width first layout)
   if (!userMoved && !fly) { view.s = fitS; [view.cx, view.cy] = fitC; }
   else if (!(view.s > 0)) view.s = fitS;
@@ -523,7 +523,8 @@ function drawOverlay() {
       const [x, y] = toScreen(XY[2 * r.i], XY[2 * r.i + 1]);
       const src = likes.includes(r.near) ? r.near : likes[0];
       const [sx, sy] = toScreen(XY[2 * src], XY[2 * src + 1]);
-      const g = ctx.createLinearGradient(sx, sy, x, y);
+      if (![sx, sy, x, y].every(Number.isFinite)) continue;
+    const g = ctx.createLinearGradient(sx, sy, x, y);
       g.addColorStop(0, "rgba(255,181,71,0.55)"); g.addColorStop(1, "rgba(111,227,200,0.35)");
       ctx.strokeStyle = g;
       ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(x, y); ctx.stroke();
@@ -581,6 +582,7 @@ function flyTo(cx, cy, s, ms = 750) { userMoved = true; fly = { from: { ...view 
 function stepFly() {
   if (!fly) return;
   const t = Math.min(1, (performance.now() - fly.t0) / fly.ms), e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  if (!(fly.from.s > 0)) fly.from.s = fly.to.s;
   const ls = Math.log(fly.from.s) + (Math.log(fly.to.s) - Math.log(fly.from.s)) * e;
   view.cx = fly.from.cx + (fly.to.cx - fly.from.cx) * e;
   view.cy = fly.from.cy + (fly.to.cy - fly.from.cy) * e;
